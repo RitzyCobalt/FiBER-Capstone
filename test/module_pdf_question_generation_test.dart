@@ -73,6 +73,56 @@ Future<Uint8List> _createInlineQuestionBankPdfWithAnswerKey() async {
   return bytes;
 }
 
+Future<Uint8List> _createQuestionBankPdfWithVariantAnswerKey() async {
+  final document = PdfDocument();
+  final page = document.pages.add();
+  page.graphics.drawString(
+    '1. Which option is first?\n'
+    'A. Alpha\n'
+    'B. Beta\n'
+    'C. Gamma\n'
+    'D. Delta\n'
+    '2. Which option is second?\n'
+    'A. North\n'
+    'B. South\n'
+    'C. East\n'
+    'D. West\n'
+    'Answers: Q1 - B; (2) D',
+    PdfStandardFont(PdfFontFamily.helvetica, 12),
+    bounds: const Rect.fromLTWH(20, 20, 520, 300),
+  );
+  final bytes = Uint8List.fromList(await document.save());
+  document.dispose();
+  return bytes;
+}
+
+Future<Uint8List> _createPdfWithAnswerKeyAfterPageLimit() async {
+  final document = PdfDocument();
+  for (var pageNumber = 1; pageNumber <= 41; pageNumber++) {
+    final page = document.pages.add();
+    if (pageNumber == 1) {
+      page.graphics.drawString(
+        '1. Which option is correct?\n'
+        'A. Alpha\n'
+        'B. Beta\n'
+        'C. Gamma\n'
+        'D. Delta',
+        PdfStandardFont(PdfFontFamily.helvetica, 12),
+        bounds: const Rect.fromLTWH(20, 20, 520, 200),
+      );
+    } else if (pageNumber == 41) {
+      page.graphics.drawString(
+        'Answer Key\n1. C',
+        PdfStandardFont(PdfFontFamily.helvetica, 12),
+        bounds: const Rect.fromLTWH(20, 20, 520, 200),
+      );
+    }
+  }
+  final bytes = Uint8List.fromList(await document.save());
+  document.dispose();
+  return bytes;
+}
+
 Uint8List _createQuestionBankDocx() {
   const paragraphs = [
     '1. Term used for lost or abandoned fishing gear that continues to catch fish?',
@@ -82,7 +132,7 @@ Uint8List _createQuestionBankDocx() {
     'a. Illegal, Unreported and Unregulatedb. Inefficient, Uncontrolled and Unreasonable',
     'c. Immediate, Undermanned and Unassistedd. Irresponsible, Unmitigated and Unrecorded',
     'Answer Key',
-    '1. D',
+    '1. D 2. C',
   ];
   final body = paragraphs
       .map(
@@ -199,6 +249,38 @@ void main() {
   );
 
   test(
+    'PDF quizzes and mock exams parse varied numbered answer key formats',
+    () async {
+      final bytes = await _createQuestionBankPdfWithVariantAnswerKey();
+
+      for (final category in ['quiz', 'mock_exam']) {
+        final draft = await DataService.prepareModuleDraft(
+          title: 'Variant Answer Key',
+          fileName: 'variant-answer-key.pdf',
+          category: category,
+          bytes: bytes,
+        );
+
+        expect(draft.questions, hasLength(2), reason: category);
+        expect(draft.questions[0].correctIndex, 1, reason: category);
+        expect(draft.questions[1].correctIndex, 3, reason: category);
+      }
+    },
+  );
+
+  test('PDF extraction reads answer keys after page 40', () async {
+    final draft = await DataService.prepareModuleDraft(
+      title: 'Long Quiz',
+      fileName: 'long-quiz.pdf',
+      category: 'quiz',
+      bytes: await _createPdfWithAnswerKeyAfterPageLimit(),
+    );
+
+    expect(draft.questions, hasLength(1));
+    expect(draft.questions.single.correctIndex, 2);
+  });
+
+  test(
     'DOCX quiz drafts keep source questions, choices and answer key',
     () async {
       final draft = await DataService.prepareModuleDraft(
@@ -226,7 +308,7 @@ void main() {
         'Immediate, Undermanned and Unassisted',
         'Irresponsible, Unmitigated and Unrecorded',
       ]);
-      expect(draft.questions.last.correctIndex, -1);
+      expect(draft.questions.last.correctIndex, 2);
     },
   );
 }

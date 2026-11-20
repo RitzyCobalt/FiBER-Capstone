@@ -1,13 +1,14 @@
 // ignore: avoid_web_libraries_in_flutter
+import 'dart:async';
 import 'dart:html' as html;
 import 'dart:typed_data';
 
-Future< String > saveOriginalFile({
+Future<String?> saveOriginalFile({
   required Uint8List bytes,
   required String fileName,
   required String mimeType,
 }) async {
-  final blob = html.Blob(< dynamic >[bytes], mimeType);
+  final blob = html.Blob(<dynamic>[bytes], mimeType);
   final url = html.Url.createObjectUrlFromBlob(blob);
   final anchor = html.AnchorElement(href: url)
     ..setAttribute('download', fileName)
@@ -15,6 +16,11 @@ Future< String > saveOriginalFile({
   html.document.body?.children.add(anchor);
   anchor.click();
   anchor.remove();
-  html.Url.revokeObjectUrl(url);
+  unawaited(
+    Future<void>.delayed(
+      const Duration(seconds: 1),
+      () => html.Url.revokeObjectUrl(url),
+    ),
+  );
   return fileName;
 }

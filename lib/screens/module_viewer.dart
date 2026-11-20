@@ -16,10 +16,10 @@ class ModuleViewer extends StatefulWidget {
   const ModuleViewer({super.key, required this.module});
 
   @override
-  State< ModuleViewer > createState() => _ModuleViewerState();
+  State<ModuleViewer> createState() => _ModuleViewerState();
 }
 
-class _ModuleViewerState extends State< ModuleViewer > {
+class _ModuleViewerState extends State<ModuleViewer> {
   Uint8List? _mediaBytes;
   bool _loadingMedia = false;
   String? _mediaError;
@@ -29,17 +29,19 @@ class _ModuleViewerState extends State< ModuleViewer > {
   bool _videoReady = false;
   bool _downloadingOriginal = false;
 
-  Future< void > _downloadOriginalFile() async {
+  Future<void> _downloadOriginalFile() async {
     if (_downloadingOriginal) return;
     setState(() => _downloadingOriginal = true);
     try {
-      final bytes = _mediaBytes ??
-          await DataService.loadModuleFileBytes(widget.module);
+      final bytes =
+          _mediaBytes ?? await DataService.loadModuleFileBytes(widget.module);
       if (!mounted) return;
       if (bytes == null || bytes.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Original binary file is not available for download.'),
+            content: Text(
+              'Original binary file is not available for download.',
+            ),
             backgroundColor: Colors.orange,
           ),
         );
@@ -47,18 +49,20 @@ class _ModuleViewerState extends State< ModuleViewer > {
       }
       final fileName = _resolvedOriginalFileName;
       final mime = widget.module.mimeType ?? 'application/octet-stream';
-
       final savedLocation = await saveOriginalFile(
         bytes: bytes,
         fileName: fileName,
         mimeType: mime,
       );
       if (!mounted) return;
+      if (savedLocation == null) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             kIsWeb
                 ? 'Downloaded original file: $fileName'
+                : defaultTargetPlatform == TargetPlatform.android
+                ? 'Saved original file: $fileName'
                 : 'Saved original file to: $savedLocation',
           ),
           backgroundColor: Colors.green.shade700,
@@ -110,9 +114,9 @@ class _ModuleViewerState extends State< ModuleViewer > {
   String get _resolvedOriginalFileName =>
       DataService.cleanOriginalFileName(widget.module);
 
-  List< String > get _structuredPagesOrSlides {
+  List<String> get _structuredPagesOrSlides {
     final raw = widget.module.content.trim();
-    if (raw.isEmpty) return const < String >['No content available.'];
+    if (raw.isEmpty) return const <String>['No content available.'];
     final parts = raw
         .split(RegExp(r'--- (?:Slide|Page) \d+ ---'))
         .map((s) => s.trim())
@@ -127,8 +131,8 @@ class _ModuleViewerState extends State< ModuleViewer > {
           .map((l) => l.trim())
           .where((l) => l.isNotEmpty)
           .toList();
-      final slides = < String >[];
-      final buffer = < String >[];
+      final slides = <String>[];
+      final buffer = <String>[];
       int charCount = 0;
       for (final line in lines) {
         if ((buffer.length >= 6 || charCount + line.length > 550) &&
@@ -153,7 +157,7 @@ class _ModuleViewerState extends State< ModuleViewer > {
           .map((p) => p.trim())
           .where((p) => p.isNotEmpty)
           .toList();
-      final pages = < String >[];
+      final pages = <String>[];
       final buffer = StringBuffer();
       for (final p in paragraphs) {
         if (buffer.length + p.length > 1600 && buffer.isNotEmpty) {
@@ -169,7 +173,7 @@ class _ModuleViewerState extends State< ModuleViewer > {
       if (pages.isNotEmpty) return pages;
     }
 
-    return < String >[raw];
+    return <String>[raw];
   }
 
   @override
@@ -197,7 +201,7 @@ class _ModuleViewerState extends State< ModuleViewer > {
     super.dispose();
   }
 
-  Future< void > _loadPictureBytes() async {
+  Future<void> _loadPictureBytes() async {
     setState(() {
       _loadingMedia = true;
       _mediaError = null;
@@ -225,7 +229,7 @@ class _ModuleViewerState extends State< ModuleViewer > {
     }
   }
 
-  Future< void > _loadPdfBytes() async {
+  Future<void> _loadPdfBytes() async {
     setState(() {
       _loadingMedia = true;
       _mediaError = null;
@@ -253,7 +257,7 @@ class _ModuleViewerState extends State< ModuleViewer > {
     }
   }
 
-  Future< void > _initVideoPlayback() async {
+  Future<void> _initVideoPlayback() async {
     setState(() {
       _loadingMedia = true;
       _mediaError = null;
@@ -429,8 +433,8 @@ class _ModuleViewerState extends State< ModuleViewer > {
                 _isPicture
                     ? 'Reassembling high-resolution image from Firestore...'
                     : _isPdfDoc
-                        ? 'Loading original PDF...'
-                        : 'Loading video stream...',
+                    ? 'Loading original PDF...'
+                    : 'Loading video stream...',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF0B3C5D),
@@ -466,8 +470,8 @@ class _ModuleViewerState extends State< ModuleViewer > {
               onPressed: _isPdfDoc
                   ? _loadPdfBytes
                   : _isPicture
-                      ? _loadPictureBytes
-                      : _initVideoPlayback,
+                  ? _loadPictureBytes
+                  : _initVideoPlayback,
               icon: const Icon(Icons.refresh, size: 16),
               label: Text(
                 _isPdfDoc ? 'Retry Loading PDF' : 'Retry Loading Media',
@@ -527,7 +531,6 @@ class _ModuleViewerState extends State< ModuleViewer > {
 
     if (_isPdfDoc && _mediaBytes != null) {
       return Container(
-        height: 720,
         margin: const EdgeInsets.only(bottom: 16),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -554,7 +557,9 @@ class _ModuleViewerState extends State< ModuleViewer > {
       final vc = _videoController!;
       final pos = vc.value.position;
       final dur = vc.value.duration;
-      final maxMs = dur.inMilliseconds > 0 ? dur.inMilliseconds.toDouble() : 1.0;
+      final maxMs = dur.inMilliseconds > 0
+          ? dur.inMilliseconds.toDouble()
+          : 1.0;
       final curMs = pos.inMilliseconds.clamp(0, maxMs.toInt()).toDouble();
       final aspect = vc.value.aspectRatio > 0 ? vc.value.aspectRatio : (16 / 9);
 
@@ -578,10 +583,7 @@ class _ModuleViewerState extends State< ModuleViewer > {
               constraints: const BoxConstraints(maxHeight: 460),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: AspectRatio(
-                  aspectRatio: aspect,
-                  child: VideoPlayer(vc),
-                ),
+                child: AspectRatio(aspectRatio: aspect, child: VideoPlayer(vc)),
               ),
             ),
             const SizedBox(height: 10),
@@ -641,7 +643,7 @@ class _ModuleViewerState extends State< ModuleViewer > {
   }
 
   Widget _buildPowerPointSlideViewer(
-    List< String > pages,
+    List<String> pages,
     int safeIdx,
     String currentPageText,
     Color badgeColor,
@@ -654,8 +656,7 @@ class _ModuleViewerState extends State< ModuleViewer > {
     final slideTitle = lines.isNotEmpty
         ? lines.first
         : '${widget.module.title} — Slide ${safeIdx + 1}';
-    final slidePoints =
-        lines.length > 1 ? lines.sublist(1) : const < String >[];
+    final slidePoints = lines.length > 1 ? lines.sublist(1) : const <String>[];
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -792,8 +793,8 @@ class _ModuleViewerState extends State< ModuleViewer > {
     final viewerTitle = _isPdfDoc
         ? 'PDF DOCUMENT VIEWER • PAGE ${safeIdx + 1} OF ${pages.length}'
         : _isWordDoc
-            ? 'WORD DOCUMENT VIEWER • PAGE ${safeIdx + 1} OF ${pages.length}'
-            : 'DOCUMENT VIEWER';
+        ? 'WORD DOCUMENT VIEWER • PAGE ${safeIdx + 1} OF ${pages.length}'
+        : 'DOCUMENT VIEWER';
 
     return Container(
       decoration: BoxDecoration(
@@ -926,6 +927,93 @@ class _ModuleViewerState extends State< ModuleViewer > {
     );
   }
 
+  Widget _buildFileDetailsCard({
+    required String fileName,
+    required String extUpper,
+    required String sizeLabel,
+    required String classLabel,
+    required Color badgeColor,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: badgeColor.withOpacity(0.35), width: 1.3),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: badgeColor.withOpacity(0.12),
+                child: Icon(_formatBadgeIcon, color: badgeColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildFileDetailLine(
+                      'File Name',
+                      fileName,
+                      valueColor: const Color(0xFF0B3C5D),
+                    ),
+                    _buildFileDetailLine(
+                      'File Type',
+                      _formatDisplayLabel,
+                      valueColor: badgeColor,
+                    ),
+                    _buildFileDetailLine('File Size', sizeLabel),
+                    _buildFileDetailLine('Class', classLabel),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton.icon(
+              onPressed: _downloadingOriginal ? null : _downloadOriginalFile,
+              icon: _downloadingOriginal
+                  ? const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.download_rounded, size: 16),
+              label: Text(
+                extUpper.isNotEmpty
+                    ? 'Download Original .$extUpper'
+                    : 'Download Original',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: badgeColor,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final module = widget.module;
@@ -973,10 +1061,7 @@ class _ModuleViewerState extends State< ModuleViewer > {
                     height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Icon(
-                    Icons.download_rounded,
-                    color: badgeColor,
-                  ),
+                : Icon(Icons.download_rounded, color: badgeColor),
           ),
         ],
       ),
@@ -986,112 +1071,38 @@ class _ModuleViewerState extends State< ModuleViewer > {
             constraints: const BoxConstraints(maxWidth: 820),
             child: Padding(
               padding: const EdgeInsets.all(16),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: badgeColor.withOpacity(0.35),
-                          width: 1.3,
+              child: _isPdfDoc
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildFileDetailsCard(
+                          fileName: fileName,
+                          extUpper: extUpper,
+                          sizeLabel: sizeLabel,
+                          classLabel: classLabel,
+                          badgeColor: badgeColor,
                         ),
-                      ),
+                        Expanded(child: _buildMediaSection()),
+                      ],
+                    )
+                  : SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              CircleAvatar(
-                                radius: 22,
-                                backgroundColor: badgeColor.withOpacity(0.12),
-                                child: Icon(
-                                  _formatBadgeIcon,
-                                  color: badgeColor,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildFileDetailLine(
-                                      'File Name',
-                                      fileName,
-                                      valueColor: const Color(0xFF0B3C5D),
-                                    ),
-                                    _buildFileDetailLine(
-                                      'File Type',
-                                      _formatDisplayLabel,
-                                      valueColor: badgeColor,
-                                    ),
-                                    _buildFileDetailLine(
-                                      'File Size',
-                                      sizeLabel,
-                                    ),
-                                    _buildFileDetailLine(
-                                      'Class',
-                                      classLabel,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                          _buildFileDetailsCard(
+                            fileName: fileName,
+                            extUpper: extUpper,
+                            sizeLabel: sizeLabel,
+                            classLabel: classLabel,
+                            badgeColor: badgeColor,
                           ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: ElevatedButton.icon(
-                              onPressed: _downloadingOriginal
-                                  ? null
-                                  : _downloadOriginalFile,
-                              icon: _downloadingOriginal
-                                  ? const SizedBox(
-                                      width: 14,
-                                      height: 14,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        color: Colors.white,
-                                      ),
-                                    )
-                                  : const Icon(
-                                      Icons.download_rounded,
-                                      size: 16,
-                                    ),
-                              label: Text(
-                                extUpper.isNotEmpty
-                                    ? 'Download Original .$extUpper'
-                                    : 'Download Original',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: badgeColor,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
-                          ),
+                          if (_isPicture || _isVideo)
+                            _buildMediaSection()
+                          else
+                            _buildFormatSpecificDocumentViewer(),
                         ],
                       ),
                     ),
-                    if (_isPicture || _isVideo || _isPdfDoc)
-                      _buildMediaSection()
-                    else
-                      _buildFormatSpecificDocumentViewer(),
-                  ],
-                ),
-              ),
             ),
           ),
         ),

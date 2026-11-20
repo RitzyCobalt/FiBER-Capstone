@@ -1300,9 +1300,8 @@ class DataService {
         final extractor = PdfTextExtractor(document);
         final pageBuffer = StringBuffer();
         final pageCount = document.pages.count;
-        final maxPages = min(pageCount, 40);
 
-        for (int i = 0; i < maxPages; i++) {
+        for (int i = 0; i < pageCount; i++) {
           await Future<void>.delayed(const Duration(milliseconds: 10));
           try {
             final pageText = extractor.extractText(
@@ -1607,7 +1606,7 @@ class DataService {
   /// Accurately parses structured teacher quiz questions, multi-line stems, inline choices, and answer keys.
   static List<Question> _parseExplicitQuestions(String rawText) {
     final answerKeyHeader = RegExp(
-      r'\banswer\s*key\b',
+      r'\banswer\s*key\b|(?:^|\n)\s*answers\s*(?::\s*|$)',
       caseSensitive: false,
     ).firstMatch(rawText);
     final questionBankText = answerKeyHeader == null
@@ -1615,7 +1614,10 @@ class DataService {
         : rawText.substring(0, answerKeyHeader.start);
     final answerKeyAnswers = <int, String>{};
     if (answerKeyHeader != null) {
-      final answerEntry = RegExp(r'\b(\d{1,3})\s*[.)]?\s*([A-Da-d])\b');
+      final answerEntry = RegExp(
+        r'\b(?:q(?:uestion)?\s*)?[\(\[]?(\d{1,3})\s*[\)\].:\-]?\s*[:=\-]?\s*[\(\[]?([A-Da-d])\b',
+        caseSensitive: false,
+      );
       for (final match in answerEntry.allMatches(
         rawText.substring(answerKeyHeader.end),
       )) {
